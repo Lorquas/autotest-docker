@@ -11,41 +11,62 @@ Test output of the docker cp command
 
 from autotest.client import utils
 from dockertest import subtest
-from dockertest.output import OutputGood
+from dockertest import xceptions
 from dockertest.dockercmd import NoFailDockerCmd
+import filecmp
 import os
+import random
+
 
 class cp(subtest.Subtest):
-	config_section = 'docker_cli/cp'
+    config_section = 'docker_cli/cp'
 
-	def run_once(self):
-        super(info, self).run_once()
-        container = find_container()
-        subargs = [container_id + ":" + self.config['basic_file']]
-        tempdir = utils.run("mktmp -d").stdout.strip() + "/"
+    def run_once(self):
+        super(cp, self).run_once()
+        cpfile = self.config['basic_file']
+        container = self._find_container_with_file(cpfile)
+        tempdir = utils.run("mktemp -d").stdout.strip() + "/"
+        #build arg list and execute command
+        subargs = [container + ":" + cpfile]
         subargs.append(tempdir)
-        nfdc = NoFailDockerCmd(self, "cp", subargs)
+        nfdc = NoFailDockerCmd(self, "cp", subargs,
+                               timeout=self.config['docker_timeout'])
         nfdc.execute()
-        file_path = find_container_fs() + self.config['basic_file']
-        copied_path = tempdir + self.config['basic_file'].split('/')[-1]
+        #save instance vars for later
+        self.stuff['tempdir'] = tempdir
+        file_path = self._target_path(cpfile, container)
         self.stuff['file_path'] = file_path
+        copied_path = tempdir + cpfile.split('/')[-1]
         self.stuff['copied_path'] = copied_path
 
-    def find_container():
-        pass
+    def _target_path(self, target_file,
+                    container,
+                    docker_root='/var/lib/docker/'):
+        return docker_root + 'containers/' + container + '/root' + target_file
 
-    def find_dontainer_fs(id, docker_root="/var/lib/docker/"):
-        pass
+    def _find_container_with_file(self, target_file,
+                                 docker_root='/var/lib/docker/'):
+        #finda all containers
+        containers = os.walk(docker_root + 'containers/').next()[1]
+        #look for containers containing desired file
+        isfile = lambda x: os.path.isfile(self._target_path(target_file, x))
+        containers = filter(isfile, containers)
+        if not containers:
+            raise xceptions.DockerTestNAError("No containers with "
+                                              "viable filesystems found.")
+        return random.choice(containers)
 
     def postprocess(self):
-        # Raise exception on Go Panic or usage help message
-        outputgood = OutputGood(self.stuff['cmdresult'])
-        info_map = self._build_table(outputgood.stdout_strip)
-        #verify each element
-        self.verify_pool_name(info_map['Pool Name'])
-        self.verify_sizes(info_map['Data file'],
-                         info_map['Data Space Used'],
-                         info_map['Data Space Total'],
-                         info_map['Metadata file'],
-                         info_map['Metadata Space Used'],
-                         info_map['Metadata Space Total'])
+        self.verify_files_identical(self.stuff['file_path'],
+                                    self.stuff['copied_path'])
+
+    def verify_files_identical(self, docker_file, copied_file):
+        self.failif(not filecmp.cmp(docker_file, copied_file),
+                    "Copied file '%s' does not match docker file "
+                    "'%s'." % (copied_file, docker_file))
+        self.loginfo("Copied file matches docker file.")
+
+    def cleanup(self):
+        if self.config['remove_after_test'] and self.stuff['tempdir']:
+            utils.run("rm -rf " + self.stuff['tempdir'])
+
