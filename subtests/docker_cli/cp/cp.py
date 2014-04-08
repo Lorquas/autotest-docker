@@ -11,62 +11,58 @@ Test output of the docker cp command
 
 from autotest.client import utils
 from dockertest import subtest
-from dockertest import xceptions
 from dockertest.dockercmd import NoFailDockerCmd
-import filecmp
-import os
-import random
-
+from dockertest.dockercmd import DockerCmd
+from dockertest.images import DockerImage
+import hashlib
 
 class cp(subtest.Subtest):
     config_section = 'docker_cli/cp'
 
+    def initialize(self):
+        super(cp, self).initialize()
+        name = self.stuff['container_name'] = utils.generate_random_string(12)
+        subargs = ['--name=%s' % name]
+        fin = DockerImage.full_name_from_defaults(self.config)
+        subargs.append(fin)
+        subargs.append('/bin/bash')
+        subargs.append('-c')
+        contents = utils.generate_random_string(12)
+        self.stuff['file_contents'] = contents
+        cpfile = '/tmp/' + utils.generate_random_string(8)
+        self.stuff['cpfile'] = cpfile
+        cmd = '\'echo "%s" > %s && md5sum %s\'' % (contents, cpfile, cpfile)
+        subargs.append(cmd)
+        nfdc = NoFailDockerCmd(self, 'run', subargs)
+        cmdresult = nfdc.execute()
+        self.stuff['cpfile_md5'] = cmdresult.stdout.split()[0]
+
     def run_once(self):
         super(cp, self).run_once()
-        cpfile = self.config['basic_file']
-        container = self._find_container_with_file(cpfile)
-        tempdir = utils.run("mktemp -d").stdout.strip() + "/"
         #build arg list and execute command
-        subargs = [container + ":" + cpfile]
-        subargs.append(tempdir)
+        subargs = [self.stuff['container_name'] + ":" + self.stuff['cpfile']]
+        subargs.append(self.tmpdir)
         nfdc = NoFailDockerCmd(self, "cp", subargs,
                                timeout=self.config['docker_timeout'])
         nfdc.execute()
-        #save instance vars for later
-        self.stuff['tempdir'] = tempdir
-        file_path = self._target_path(cpfile, container)
-        self.stuff['file_path'] = file_path
-        copied_path = tempdir + cpfile.split('/')[-1]
+        copied_path = "%s/%s" % (self.tmpdir,  
+                                   self.stuff['cpfile'].split('/')[-1])
         self.stuff['copied_path'] = copied_path
 
-    def _target_path(self, target_file,
-                    container,
-                    docker_root='/var/lib/docker/'):
-        return docker_root + 'containers/' + container + '/root' + target_file
-
-    def _find_container_with_file(self, target_file,
-                                 docker_root='/var/lib/docker/'):
-        #finda all containers
-        containers = os.walk(docker_root + 'containers/').next()[1]
-        #look for containers containing desired file
-        isfile = lambda x: os.path.isfile(self._target_path(target_file, x))
-        containers = filter(isfile, containers)
-        if not containers:
-            raise xceptions.DockerTestNAError("No containers with "
-                                              "viable filesystems found.")
-        return random.choice(containers)
-
     def postprocess(self):
-        self.verify_files_identical(self.stuff['file_path'],
+        self.verify_files_identical(self.stuff['cpfile'],
                                     self.stuff['copied_path'])
 
     def verify_files_identical(self, docker_file, copied_file):
-        self.failif(not filecmp.cmp(docker_file, copied_file),
+        with open(copied_file, 'r') as copied_content:
+            data = copied_content.read()
+        copied_md5 = hashlib.md5(data).hexdigest()
+        self.failif(self.stuff['cpfile_md5'] != copied_md5,
                     "Copied file '%s' does not match docker file "
                     "'%s'." % (copied_file, docker_file))
         self.loginfo("Copied file matches docker file.")
 
     def cleanup(self):
-        if self.config['remove_after_test'] and self.stuff['tempdir']:
-            utils.run("rm -rf " + self.stuff['tempdir'])
-
+        if self.config['remove_after_test']:
+            dkrcmd = DockerCmd(self, 'rm', [self.stuff['container_name']])
+            dkrcmd.execute()

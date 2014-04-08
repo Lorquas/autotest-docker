@@ -615,16 +615,12 @@ copied successfully.
 -------------------------------------
 
 *  Docker daemon is running and accessable by it's unix socket.
-*  ``mktemp`` command is available.
-*  At least one container with a file system is present.
 
 ``docker_cli/cp`` Configuration
 --------------------------------------
 
-* The ``basic_file`` is a relative path to a file in a
-  docker container which will be copied for the test.
 * The ``remove_after_test`` specifies wether to remove the
-  temp directory containing the copied file.
+  container created during the test.
 
 ----------------------------------
 Dockertest API Reference
