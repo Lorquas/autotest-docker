@@ -45,7 +45,7 @@ class cp(subtest.Subtest):
         nfdc = NoFailDockerCmd(self, "cp", subargs,
                                timeout=self.config['docker_timeout'])
         nfdc.execute()
-        copied_path = "%s/%s" % (self.tmpdir,  
+        copied_path = "%s/%s" % (self.tmpdir,
                                    self.stuff['cpfile'].split('/')[-1])
         self.stuff['copied_path'] = copied_path
 
