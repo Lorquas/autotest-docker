@@ -336,6 +336,20 @@ file is loaded *either* from ``config_defaults`` *or* ``config_custom``.
    ``enable = false`` (or ``no``) option to any config file
    will turn off just that test.
 
+``bugzilla`` configuration options
+----------------------------------
+
+This section controlls the bugzilla tracking module.  The module allows
+subtests to be tagged or "blocked" with bugzilla numbers, and if the bug is
+open, it will save time and skip the test.
+
+*  ``bugzilla_enable`` yes/no that turns the bugzilla checking module on/off
+*  ``bugzilla_username`` username in which to log into bugzilla (optional)
+*  ``bugzilla_password`` password in which to log into bugzilla (optional)
+*  ``bugzilla_url`` URL to the bugzilla instance.
+*  ``bugzilla_fixed_states`` Bug states which are considered closed, allowing
+   the test to run .
+
 ``example`` Sub-test
 =======================
 

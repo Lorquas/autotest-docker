@@ -17,6 +17,8 @@ import os
 
 class info(subtest.Subtest):
 
+    config_section = 'docker_cli/info'
+
     def run_once(self):
         super(info, self).run_once()
         # 1. Run with no options

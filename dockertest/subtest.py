@@ -29,6 +29,7 @@ from xceptions import DockerTestFail
 from xceptions import DockerTestNAError
 from xceptions import DockerTestError
 from xceptions import DockerSubSubtestNAError
+from trackers import Trackers
 
 
 class Subtest(test.test):
@@ -128,8 +129,13 @@ class Subtest(test.test):
 
     def execute(self, *args, **dargs):
         """**Do not override**, needed to pull data from super class"""
-        super(Subtest, self).execute(iterations=self.iterations,
-                                     *args, **dargs)
+        try:
+            Trackers(self)
+        except DockerTestNAError as e:
+            self.loginfo(e.message)
+        else:
+            super(Subtest, self).execute(iterations=self.iterations,
+                                         *args, **dargs)
 
     # These methods can optionally be overridden by subclasses
 
