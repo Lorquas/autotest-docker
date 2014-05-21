@@ -589,10 +589,29 @@ Several variations of running the dockerhelp command.
 ``docker_cli/dockerhelp`` Configuration
 -------------------------------------------
 
+*  The ``help_commands`` is a line separated list of all the docker commands.
+*  The ``generate_subsubtest_list`` is a boolean toggling the generation of
+   a subsubtest per each ``help_command`` item.
+
+``docker_cli/dockerhelp/help_simple`` Configuration
+-----------------------------------------------------
+
 *  The ``success_option_list`` is a CSV list of docker options
    where a zero-exit code is expected (though a usage message
    may appear)
 *  The ``failure_option_list`` is the opposite.
+
+``docker_cli/dockerhelp/help_*****`` Configuration
+-----------------------------------------------------
+If ``generate_subsubtest_list`` is enabled a new subsubtest will be created
+for each item in ``help_commands``.  The optional subsection for this will be
+named ``[docker_cli/dockerhelp/help_<command>]``.  For example the ``attach``
+command will have a subsection titled ``[docker_cli/dockerhelp/help_attach]``.
+Each one of these sections follows the same config format as ``help_simple``
+(above).
+
+*  If ``success_option_list`` is not set for this section. They will be
+   defaulted to ``help <command>,<command> --help``
 
 
 ``docker_cli/run_simple`` Sub-test
