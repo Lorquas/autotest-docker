@@ -28,4 +28,4 @@ class good_extra_tag(pull_base):
         # Remove tag from config
         docker_repo_tag = config_copy.pop('docker_repo_tag')
         full_name_wo_tag = DockerImage.full_name_from_defaults(config_copy)
-        return ["--tag=%s" % (docker_repo_tag), full_name_wo_tag]
+        return ["%s:%s" % (full_name_wo_tag, docker_repo_tag)]

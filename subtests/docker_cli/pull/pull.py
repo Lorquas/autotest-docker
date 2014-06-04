@@ -8,15 +8,14 @@ Test output of docker Pull command
 2b. if docker_expected_result == FAIL: fail when command exitcode == 0
 """
 
-import time
-import httplib
 from autotest.client.shared import error
-from dockertest.subtest import SubSubtest
+from dockertest import config
+from dockertest import subtest
+from dockertest.dockercmd import AsyncDockerCmd
 from dockertest.images import DockerImages, DockerImage
 from dockertest.output import OutputGood
-from dockertest.dockercmd import AsyncDockerCmd
-from dockertest import subtest
-from dockertest import config
+from dockertest.subtest import SubSubtest
+import httplib
 
 # Okay to be less-strict for these cautions/warnings in subtests
 # pylint: disable=C0103,C0111,R0904,C0103
@@ -42,9 +41,7 @@ class pull_base(SubSubtest):
                                 self.config['docker_pull_timeout'])
         self.loginfo("Executing background command: %s" % dkrcmd)
         dkrcmd.execute()
-        while not dkrcmd.done:
-            self.loginfo("Pulling...")
-            time.sleep(3)
+        self.loginfo("Pulling...")
         self.sub_stuff["cmdresult"] = dkrcmd.wait()
 
     def complete_docker_command_line(self):
@@ -95,7 +92,7 @@ def check_registry(registry_addr):
     r1 = conn.getresponse()
     if r1.status != 200:
         response = r1.read()
-        if not "docker-registry server" in response:
+        if "docker-registry server" not in response:
             error.TestNAError("Registry %s is not docker registry."
                               " Response: %s" % (registry_addr, response))
     else:
